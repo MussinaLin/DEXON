@@ -8,6 +8,8 @@ contract Election {
     
     //self define
     uint public sequence;
+    uint public totalVote;
+    mapping(address => uint) public money;
     
     struct Candidate {
         uint vote;
@@ -20,8 +22,8 @@ contract Election {
     mapping(uint => mapping(address => bool)) public voted;
     
     /* Following will be needed for extra bonuse */
-    uint public guaranteedDeposit = 0;
-    uint public refundRatio = 5; // In order to get refund, candidate's votes must be more than 1/5
+    uint public guaranteedDeposit = 1000000000000000000;
+    uint public refundRatio = 3; // In order to get refund, candidate's votes must be more than 1/5
 
     /* 
         !IMPORTANT!
@@ -40,6 +42,7 @@ contract Election {
     constructor() public {
         sequence = 0;
         round = round + 1;
+        totalVote = 0;
     }
 
     /* Stop voting and start registration */
@@ -57,11 +60,23 @@ contract Election {
             }
         }
         
-        
-        isVoting = false;
+        uint raito = totalVote / refundRatio;
+        if(raito != 0 && maxCount != 0){
+            if(maxCount > raito){
+                emit refund(electedCandi, candidateData[round][electedCandi].name, money[electedCandi], round);
+            }
+            
+        }else if(raito == 0){
+            emit refund(electedCandi, candidateData[round][electedCandi].name, money[electedCandi], round);
+        }
+       
         emit elected(round, electedCandi, candidateData[round][electedCandi].name, maxCount);
         emit reset(round);
+        
+        
+        isVoting = false;
         round++;
+        totalVote = 0;
         delete candiatesList;
     }
 
@@ -77,6 +92,7 @@ contract Election {
         require(isVoting == true, "Not start voting yet!");
        
         candidateData[round][candidateAddr].vote++;
+        totalVote = totalVote + 1;
         emit voteCandidate(round, candidateAddr, msg.sender);
 
     }
@@ -104,6 +120,8 @@ contract Election {
         //put to map
         candidateData[round][msg.sender] = person;
         
+        money[msg.sender] = 0;
+        
         emit registered(round, msg.sender);
         
     }
@@ -128,9 +146,11 @@ contract Election {
     // Extra bonus
     /* sponsor a candidate */
     function sponsor(address candidateAddr) public payable {
-        
-         
-     // emit sponsorCandidate(round, candidateAddr, candidateData[round][candidateAddr].name, msg.sender, msg.value);
+     money[msg.sender] = money[msg.sender] + msg.value;
+     candidateAddr.transfer(msg.value);
+     emit sponsorCandidate(round, candidateAddr, candidateData[round][candidateAddr].name, msg.sender, msg.value);
     }
+    
+    
 
 }
