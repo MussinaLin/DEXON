@@ -90,6 +90,13 @@ contract Election {
         person.isRegistered = true;
         person.candidateNumber = sequence++;
         
+        bool isRegistered = false;
+        for(uint i=0;i<candiatesList.length;i++){
+            if(candiatesList[i] == msg.sender){
+                isRegistered = true;
+            }
+        }
+        require(isRegistered == false, "Sorry~ You have been registered...");
         
         // push to list
         candiatesList.push(msg.sender);
