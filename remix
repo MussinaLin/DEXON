@@ -1,0 +1,129 @@
+pragma solidity ^0.4.25;
+
+contract Election {
+
+    address owner; // Address of the contract owner
+    bool public isVoting = false; // isVoting should be true when voting starts
+    uint public round = 0; // round number should be increased when new election starts
+    
+    //self define
+    uint public sequence;
+    
+    struct Candidate {
+        uint vote;
+        string name;
+        bool isRegistered;
+        uint candidateNumber;
+    }
+    address[] public candiatesList;
+    mapping(uint => mapping(address => Candidate)) public candidateData;
+    mapping(uint => mapping(address => bool)) public voted;
+    
+    /* Following will be needed for extra bonuse */
+    uint public guaranteedDeposit = 0;
+    uint public refundRatio = 5; // In order to get refund, candidate's votes must be more than 1/5
+
+    /* 
+        !IMPORTANT!
+        Events should be fired at the correct moment otherwise DAPP wont work normally
+    */
+    event voteStart(uint round); // When vote starts
+    event elected(uint round, address candidate, string name, uint vote); // When someone is elected
+    event reset(uint round); // When ocntract owner resets the election
+    event registered(uint round, address candidate); // When someone registered
+    event voteCandidate(uint round, address candidate, address voter); // When someone voted
+    
+    /* events for extrea bonus */
+    event sponsorCandidate(uint round, address candidate, string name, address sponsor, uint amount); // When someone sponsor a candidate
+    event refund(address candidate, string name, uint amount, uint round); // When a candidates gets refunded
+
+    constructor() public {
+        sequence = 0;
+        round = round + 1;
+    }
+
+    /* Stop voting and start registration */
+    function resetElection() public {
+        sequence = 0;
+        //quickSort(counting, 0, counting.length - 1);
+        
+        // find elected candidate
+        uint maxCount = 0;
+        address electedCandi;
+        for(uint i=0; i<candiatesList.length;i++){
+            if(maxCount < candidateData[round][candiatesList[i]].vote){
+                maxCount = candidateData[round][candiatesList[i]].vote;
+                electedCandi = candiatesList[i];
+            }
+        }
+        
+        
+        isVoting = false;
+        emit elected(round, electedCandi, candidateData[round][electedCandi].name, maxCount);
+        emit reset(round);
+        round++;
+        delete candiatesList;
+    }
+
+    /* Stop registration and start voting */
+    function startVoting() public {
+        isVoting = true;
+       // round++;
+        emit voteStart(round);
+    }
+
+    /* Vote a candidate */
+    function vote(address candidateAddr) public {
+        require(isVoting == true, "Not start voting yet!");
+       
+        candidateData[round][candidateAddr].vote++;
+        emit voteCandidate(round, candidateAddr, msg.sender);
+
+    }
+
+    /* register as a candidate */
+    function register(string name) public payable {
+        require(isVoting == false, "Can't register when voting.");
+        Candidate memory person;
+        person.vote = 0;
+        person.name = name;
+        person.isRegistered = true;
+        person.candidateNumber = sequence++;
+        
+        
+        // push to list
+        candiatesList.push(msg.sender);
+        
+        //put to map
+        candidateData[round][msg.sender] = person;
+        
+        emit registered(round, msg.sender);
+        
+    }
+
+    function getCandidatesList() public view returns (address[]) {
+        return candiatesList;
+    }
+    
+    function getHighestVoter() public view returns(string, uint){
+        uint maxCount = 0;
+        address electedCandi;
+        for(uint i=0; i<candiatesList.length;i++){
+            if(maxCount < candidateData[round][candiatesList[i]].vote){
+                maxCount = candidateData[round][candiatesList[i]].vote;
+                electedCandi = candiatesList[i];
+            }
+        }
+        
+        return (candidateData[round][electedCandi].name, maxCount);
+    }
+    
+    // Extra bonus
+    /* sponsor a candidate */
+    function sponsor(address candidateAddr) public payable {
+        
+         
+     // emit sponsorCandidate(round, candidateAddr, candidateData[round][candidateAddr].name, msg.sender, msg.value);
+    }
+
+}
